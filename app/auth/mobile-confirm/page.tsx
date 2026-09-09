@@ -182,7 +182,7 @@ export default function MobileConfirmPage() {
 
         {status === "success" && (
           <a
-            href="viewvaultmobile://"
+            href="viewvaultmobile://auth"
             style={{
               display: "block",
               marginTop: "28px",
