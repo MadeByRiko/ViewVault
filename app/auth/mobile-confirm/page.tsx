@@ -73,7 +73,7 @@ export default function MobileConfirmPage() {
 
       setStatus("success");
       setMessage(
-        "Il tuo indirizzo email è stato confermato correttamente. Ora puoi tornare su ViewVault e accedere."
+        "Il tuo indirizzo email è stato confermato correttamente. Ora puoi aprire ViewVault e accedere."
       );
     }
 
@@ -182,7 +182,7 @@ export default function MobileConfirmPage() {
 
         {status === "success" && (
           <a
-            href="/"
+            href="viewvaultmobile://"
             style={{
               display: "block",
               marginTop: "28px",
@@ -195,7 +195,7 @@ export default function MobileConfirmPage() {
               fontWeight: 700,
             }}
           >
-            Torna a ViewVault
+            Apri ViewVault
           </a>
         )}
 
