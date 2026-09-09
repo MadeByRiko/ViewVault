@@ -2,13 +2,67 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+type DiagnosticData = {
+  tokenHash: boolean;
+  type: string | null;
+  error: string | null;
+  errorDescription: string | null;
+  hasQuery: boolean;
+  hasHash: boolean;
+};
+
 export default function MobileConfirmPage() {
   const [currentUrl, setCurrentUrl] = useState("");
-  const [attempted, setAttempted] = useState(false);
 
   useEffect(() => {
     setCurrentUrl(window.location.href);
   }, []);
+
+  const diagnostic = useMemo<DiagnosticData>(() => {
+    if (!currentUrl) {
+      return {
+        tokenHash: false,
+        type: null,
+        error: null,
+        errorDescription: null,
+        hasQuery: false,
+        hasHash: false,
+      };
+    }
+
+    try {
+      const url = new URL(currentUrl);
+
+      const queryParams = new URLSearchParams(url.search);
+      const hashParams = new URLSearchParams(
+        url.hash.startsWith("#")
+          ? url.hash.slice(1)
+          : url.hash
+      );
+
+      const getParam = (name: string) =>
+        hashParams.get(name) ?? queryParams.get(name);
+
+      return {
+        tokenHash: Boolean(getParam("token_hash")),
+        type: getParam("type"),
+        error: getParam("error"),
+        errorDescription: getParam("error_description"),
+        hasQuery: Boolean(url.search),
+        hasHash: Boolean(url.hash),
+      };
+    } catch {
+      return {
+        tokenHash: false,
+        type: null,
+        error: "invalid_url",
+        errorDescription:
+          "Non è stato possibile analizzare l'URL ricevuto.",
+        hasQuery: false,
+        hasHash: false,
+      };
+    }
+  }, [currentUrl]);
 
   const appUrl = useMemo(() => {
     if (!currentUrl) {
@@ -24,27 +78,11 @@ export default function MobileConfirmPage() {
     }
   }, [currentUrl]);
 
-  useEffect(() => {
-    if (!appUrl) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setAttempted(true);
-      window.location.href = appUrl;
-    }, 700);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [appUrl]);
-
   function openViewVault() {
     if (!appUrl) {
       return;
     }
 
-    setAttempted(true);
     window.location.href = appUrl;
   }
 
@@ -58,8 +96,7 @@ export default function MobileConfirmPage() {
         alignItems: "center",
         justifyContent: "center",
         padding: "24px",
-        fontFamily:
-          "Arial, Helvetica, sans-serif",
+        fontFamily: "Arial, Helvetica, sans-serif",
       }}
     >
       <section
@@ -71,8 +108,7 @@ export default function MobileConfirmPage() {
           borderRadius: "24px",
           padding: "32px",
           textAlign: "center",
-          boxShadow:
-            "0 24px 70px rgba(0, 0, 0, 0.35)",
+          boxShadow: "0 24px 70px rgba(0, 0, 0, 0.35)",
         }}
       >
         <div
@@ -105,15 +141,14 @@ export default function MobileConfirmPage() {
             height: "68px",
             margin: "0 auto 24px",
             borderRadius: "22px",
-            backgroundColor:
-              "rgba(124, 58, 237, 0.15)",
+            backgroundColor: "rgba(124, 58, 237, 0.15)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             fontSize: "32px",
           }}
         >
-          🔐
+          🔬
         </div>
 
         <h1
@@ -124,38 +159,77 @@ export default function MobileConfirmPage() {
             color: "#FFFFFF",
           }}
         >
-          Conferma account ViewVault
+          Diagnostica conferma ViewVault
         </h1>
 
         <p
           style={{
             marginTop: "16px",
-            marginBottom: 0,
+            marginBottom: "24px",
             color: "#D4D4D8",
-            fontSize: "16px",
-            lineHeight: 1.65,
+            fontSize: "15px",
+            lineHeight: 1.6,
           }}
         >
-          La conferma è stata ricevuta.
-          Stiamo aprendo ViewVault per
-          completare l&apos;accesso.
+          Controlliamo quali dati sono arrivati
+          dal link di conferma prima di aprire
+          l&apos;app.
         </p>
 
-        {attempted && (
-          <p
-            style={{
-              marginTop: "20px",
-              marginBottom: 0,
-              color: "#A1A1AA",
-              fontSize: "14px",
-              lineHeight: 1.6,
-            }}
-          >
-            Se l&apos;app non si è aperta
-            automaticamente, usa il pulsante
-            qui sotto.
-          </p>
-        )}
+        <div
+          style={{
+            padding: "18px",
+            borderRadius: "16px",
+            backgroundColor: "#0F0F0F",
+            border: "1px solid #3F3F46",
+            textAlign: "left",
+            fontFamily: "monospace",
+            fontSize: "14px",
+            lineHeight: 1.8,
+          }}
+        >
+          <div>
+            token_hash:{" "}
+            <strong>
+              {diagnostic.tokenHash ? "SI ✅" : "NO ❌"}
+            </strong>
+          </div>
+
+          <div>
+            type:{" "}
+            <strong>
+              {diagnostic.type ?? "NO"}
+            </strong>
+          </div>
+
+          <div>
+            error:{" "}
+            <strong>
+              {diagnostic.error ?? "NO"}
+            </strong>
+          </div>
+
+          <div>
+            error_description:{" "}
+            <strong>
+              {diagnostic.errorDescription ?? "NO"}
+            </strong>
+          </div>
+
+          <div>
+            query params:{" "}
+            <strong>
+              {diagnostic.hasQuery ? "SI" : "NO"}
+            </strong>
+          </div>
+
+          <div>
+            hash params:{" "}
+            <strong>
+              {diagnostic.hasHash ? "SI" : "NO"}
+            </strong>
+          </div>
+        </div>
 
         <button
           type="button"
@@ -183,14 +257,14 @@ export default function MobileConfirmPage() {
 
         <p
           style={{
-            marginTop: "28px",
+            marginTop: "24px",
             marginBottom: 0,
             color: "#71717A",
             fontSize: "12px",
             lineHeight: 1.6,
           }}
         >
-          © 2026 ViewVault
+          Modalità diagnostica temporanea
         </p>
       </section>
     </main>
