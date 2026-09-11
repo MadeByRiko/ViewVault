@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "it.viewvault.app",
+      "sha256_cert_fingerprints": [
+        "28:7C:F9:9E:4B:FF:CF:57:84:61:4D:9E:CD:D5:90:DE:6E:57:A2:42:67:F8:5D:15:7A:3B:B5:20:F6:90:D1:53"
+      ]
+    }
+  }
+]
