@@ -59,6 +59,8 @@ const [showPassword, setShowPassword] = useState(false);
         REFERRAL_CANDIDATE_KEY,
         referralFromUrl
       );
+      setAuthMode("register");
+      setOpen(true);
     }
 
     async function applyPendingReferral(
