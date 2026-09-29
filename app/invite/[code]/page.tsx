@@ -46,10 +46,10 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 <Link
-                  href={`/registrazione?referral=${encodeURIComponent(referralCode)}`}
+                  href={`/?referral=${encodeURIComponent(referralCode)}`}
                   className="inline-flex items-center justify-center rounded-full bg-[#7C3AED] px-6 py-4 text-center font-bold text-white transition hover:bg-[#6D28D9]"
                 >
-                  Crea account
+                  Vai alla registrazione
                 </Link>
                 <Link
                   href="/"
