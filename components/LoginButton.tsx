@@ -7,6 +7,7 @@ import {
   type FormEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { createPortal } from "react-dom";
@@ -16,6 +17,14 @@ import { createClient } from "../lib/supabase/client";
 type AuthMode = "login" | "register";
 
 type OAuthProvider = "google" | "github";
+
+const REFERRAL_CANDIDATE_KEY = "viewvault_referral_candidate";
+const REFERRAL_PENDING_KEY = "viewvault_referral_pending";
+
+function normalizeReferralCode(value: string | null) {
+  const normalized = value?.trim().toUpperCase() ?? "";
+  return /^[A-Z0-9]{8}$/.test(normalized) ? normalized : null;
+}
 
 export default function LoginButton() {
   const router = useRouter();
@@ -36,9 +45,63 @@ const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [hasError, setHasError] = useState(false);
+  const referralApplyInFlight = useRef(false);
 
   useEffect(() => {
     setMounted(true);
+
+    const referralFromUrl = normalizeReferralCode(
+      new URLSearchParams(window.location.search).get("referral")
+    );
+
+    if (referralFromUrl) {
+      window.localStorage.setItem(
+        REFERRAL_CANDIDATE_KEY,
+        referralFromUrl
+      );
+      setAuthMode("register");
+      setOpen(true);
+    }
+
+    async function applyPendingReferral(
+      currentUser: User | null
+    ) {
+      if (!currentUser || referralApplyInFlight.current) {
+        return;
+      }
+
+      const pendingCode = normalizeReferralCode(
+        window.localStorage.getItem(REFERRAL_PENDING_KEY)
+      );
+
+      if (!pendingCode) {
+        return;
+      }
+
+      referralApplyInFlight.current = true;
+
+      const { error } = await supabase.rpc(
+        "apply_referral_code",
+        { p_code: pendingCode }
+      );
+
+      if (error) {
+        console.error(
+          "Errore applicazione codice referral:",
+          error
+        );
+        referralApplyInFlight.current = false;
+        return;
+      }
+
+      window.localStorage.removeItem(
+        REFERRAL_PENDING_KEY
+      );
+      window.localStorage.removeItem(
+        REFERRAL_CANDIDATE_KEY
+      );
+      referralApplyInFlight.current = false;
+    }
 
     async function loadUser() {
       const {
@@ -59,6 +122,7 @@ const [showPassword, setShowPassword] = useState(false);
      const currentUser = session?.user ?? null;
 
 setUser(currentUser);
+await applyPendingReferral(currentUser);
 
 if (!currentUser) {
   setUsername(null);
@@ -91,7 +155,9 @@ setUsername(profile?.username ?? null);
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setUser(session?.user ?? null);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        void applyPendingReferral(currentUser);
       }
     );
 
@@ -141,6 +207,19 @@ setUsername(profile?.username ?? null);
   ) {
     setIsLoading(true);
     clearMessages();
+
+    if (authMode === "register") {
+      const candidateCode = normalizeReferralCode(
+        window.localStorage.getItem(REFERRAL_CANDIDATE_KEY)
+      );
+
+      if (candidateCode) {
+        window.localStorage.setItem(
+          REFERRAL_PENDING_KEY,
+          candidateCode
+        );
+      }
+    }
 
     const { error } =
       await supabase.auth.signInWithOAuth({
@@ -204,6 +283,17 @@ setUsername(profile?.username ?? null);
   async function registerWithEmail(
     cleanEmail: string
   ) {
+    const candidateCode = normalizeReferralCode(
+      window.localStorage.getItem(REFERRAL_CANDIDATE_KEY)
+    );
+
+    if (candidateCode) {
+      window.localStorage.setItem(
+        REFERRAL_PENDING_KEY,
+        candidateCode
+      );
+    }
+
     const { data, error } =
       await supabase.auth.signUp({
         email: cleanEmail,
@@ -219,10 +309,37 @@ setUsername(profile?.username ?? null);
         error
       );
 
+      window.localStorage.removeItem(
+        REFERRAL_PENDING_KEY
+      );
+
       setMessage(
         getReadableAuthError(error.message)
       );
 
+      setHasError(true);
+      setIsLoading(false);
+      return;
+    }
+
+    /*
+     * Con la protezione anti-enumerazione attiva,
+     * Supabase può rispondere senza errore anche se
+     * l'email appartiene già a un account. In quel
+     * caso non lasciamo mai un referral in sospeso.
+     */
+    if (
+      data.user &&
+      Array.isArray(data.user.identities) &&
+      data.user.identities.length === 0
+    ) {
+      window.localStorage.removeItem(
+        REFERRAL_PENDING_KEY
+      );
+
+      setMessage(
+        "C'è già un account registrato con questa email. Torna all'accesso per entrare."
+      );
       setHasError(true);
       setIsLoading(false);
       return;
