@@ -309,10 +309,37 @@ setUsername(profile?.username ?? null);
         error
       );
 
+      window.localStorage.removeItem(
+        REFERRAL_PENDING_KEY
+      );
+
       setMessage(
         getReadableAuthError(error.message)
       );
 
+      setHasError(true);
+      setIsLoading(false);
+      return;
+    }
+
+    /*
+     * Con la protezione anti-enumerazione attiva,
+     * Supabase può rispondere senza errore anche se
+     * l'email appartiene già a un account. In quel
+     * caso non lasciamo mai un referral in sospeso.
+     */
+    if (
+      data.user &&
+      Array.isArray(data.user.identities) &&
+      data.user.identities.length === 0
+    ) {
+      window.localStorage.removeItem(
+        REFERRAL_PENDING_KEY
+      );
+
+      setMessage(
+        "C'è già un account registrato con questa email. Torna all'accesso per entrare."
+      );
       setHasError(true);
       setIsLoading(false);
       return;
